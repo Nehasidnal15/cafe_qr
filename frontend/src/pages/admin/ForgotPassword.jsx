@@ -1,0 +1,152 @@
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
+import { Mail, Lock, ShieldCheck, ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const ForgotPassword = () => {
+  const navigate = useNavigate();
+  const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post('http://192.168.0.167:5000/api/admin/forgot-password', { email });
+      toast.success('OTP sent to your email');
+      setStep(2);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await axios.post('http://192.168.0.167:5000/api/admin/verify-otp', { email, otp });
+      toast.success('OTP Verified');
+      setStep(3);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Invalid OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) return toast.error('Passwords do not match');
+    if (newPassword.length < 6) return toast.error('Password must be at least 6 characters');
+
+    setLoading(true);
+    try {
+      await axios.post('http://192.168.0.167:5000/api/admin/reset-password', { email, otp, newPassword });
+      toast.success('Password reset successful');
+      navigate('/admin/login');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="app-container" style={{ background: 'var(--bg-cream)', justifyContent: 'center', padding: '2rem' }}>
+      <div className="cafe-card animate-fade-in" style={{ textAlign: 'center', maxWidth: '400px', margin: '0 auto' }}>
+        <Link to="/admin/login" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', textDecoration: 'none', marginBottom: '1.5rem', fontSize: '0.9rem', fontWeight: '600' }}>
+          <ArrowLeft size={16} /> Back to Login
+        </Link>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ background: 'rgba(111, 78, 55, 0.1)', padding: '20px', borderRadius: '50%' }}>
+            {step === 1 && <Mail color="var(--primary-color)" size={32} />}
+            {step === 2 && <ShieldCheck color="var(--primary-color)" size={32} />}
+            {step === 3 && <Lock color="var(--primary-color)" size={32} />}
+          </div>
+        </div>
+
+        <h1 className="header-title" style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>
+          {step === 1 && 'Forgot Password'}
+          {step === 2 && 'Verify OTP'}
+          {step === 3 && 'New Password'}
+        </h1>
+        <p style={{ color: 'var(--text-dim)', marginBottom: '2.5rem', fontWeight: '500' }}>
+          {step === 1 && 'Enter your email to receive a password reset OTP'}
+          {step === 2 && `Enter the 6-digit code sent to ${email}`}
+          {step === 3 && 'Set a strong new password for your account'}
+        </p>
+
+        {step === 1 && (
+          <form onSubmit={handleSendOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+            <input 
+              type="email" 
+              className="input-field" 
+              placeholder="Admin Email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Sending...' : 'Send OTP'}
+            </button>
+          </form>
+        )}
+
+        {step === 2 && (
+          <form onSubmit={handleVerifyOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+            <input 
+              type="text" 
+              className="input-field" 
+              placeholder="Enter 6-digit OTP" 
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              maxLength={6}
+              style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '1.2rem', fontWeight: 'bold' }}
+              required
+            />
+            <button type="submit" className="btn-primary" disabled={loading || otp.length !== 6}>
+              {loading ? 'Verifying...' : 'Verify OTP'}
+            </button>
+            <button type="button" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '0.9rem', cursor: 'pointer' }}>
+              Change Email
+            </button>
+          </form>
+        )}
+
+        {step === 3 && (
+          <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+            <input 
+              type="password" 
+              className="input-field" 
+              placeholder="New Password" 
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <input 
+              type="password" 
+              className="input-field" 
+              placeholder="Confirm New Password" 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Resetting...' : 'Reset Password'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ForgotPassword;
