@@ -7,7 +7,11 @@ const { sendOTPEmail } = require('../utils/email');
 
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body; 
+    let { username, password } = req.body; 
+    // Fallback: If user types 'admin', map it to the actual admin email
+    if (username === 'admin') {
+      username = 'nehasidnal15.mca@gmail.com';
+    }
     const admin = await Admin.findByEmail(username);
     if (!admin) return res.status(400).json({ message: 'Invalid credentials' });
 

@@ -44,6 +44,12 @@ const Order = {
     return mapOrder(result.rows[0]);
   },
 
+  findByPhone: async (phone) => {
+    // Return all orders for a phone number, ordered by most recent first
+    const result = await db.query('SELECT * FROM orders WHERE customer_phone = $1 ORDER BY created_at DESC', [phone]);
+    return result.rows.map(mapOrder);
+  },
+
   create: async (data) => {
     const { orderId, customerName, customerPhone, tableNumber, items, totalAmount, paymentMode } = data;
     const result = await db.query(

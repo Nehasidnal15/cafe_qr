@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Lock, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import API_BASE_URL from '../../config';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -11,13 +12,15 @@ const ForgotPassword = () => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('http://192.168.0.167:5000/api/admin/forgot-password', { email });
+      await axios.post(`${API_BASE_URL}/api/admin/forgot-password`, { email });
       toast.success('OTP sent to your email');
       setStep(2);
     } catch (error) {
@@ -31,7 +34,7 @@ const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('http://192.168.0.167:5000/api/admin/verify-otp', { email, otp });
+      await axios.post(`${API_BASE_URL}/api/admin/verify-otp`, { email, otp });
       toast.success('OTP Verified');
       setStep(3);
     } catch (error) {
@@ -48,7 +51,7 @@ const ForgotPassword = () => {
 
     setLoading(true);
     try {
-      await axios.post('http://192.168.0.167:5000/api/admin/reset-password', { email, otp, newPassword });
+      await axios.post(`${API_BASE_URL}/api/admin/reset-password`, { email, otp, newPassword });
       toast.success('Password reset successful');
       navigate('/admin/login');
     } catch (error) {
@@ -123,22 +126,69 @@ const ForgotPassword = () => {
 
         {step === 3 && (
           <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
-            <input 
-              type="password" 
-              className="input-field" 
-              placeholder="New Password" 
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
-            <input 
-              type="password" 
-              className="input-field" 
-              placeholder="Confirm New Password" 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                className="input-field" 
+                placeholder="New Password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                style={{ paddingRight: '40px' }}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-dim)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0
+                }}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            
+            <div style={{ position: 'relative' }}>
+              <input 
+                type={showConfirmPassword ? 'text' : 'password'} 
+                className="input-field" 
+                placeholder="Confirm New Password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                style={{ paddingRight: '40px' }}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-dim)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0
+                }}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Resetting...' : 'Reset Password'}
             </button>

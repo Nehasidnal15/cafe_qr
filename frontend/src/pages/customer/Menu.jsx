@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ShoppingBag, Minus, Plus, Search, Loader, ChevronRight, UtensilsCrossed } from 'lucide-react';
 import toast from 'react-hot-toast';
+import API_BASE_URL from '../../config';
 
 const CustomerMenu = () => {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ const CustomerMenu = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isLoading, setIsLoading] = useState(true);
+  const [recommendations, setRecommendations] = useState([]);
+  const [isFetchingRecs, setIsFetchingRecs] = useState(false);
   const [foodPreference, setFoodPreference] = useState(localStorage.getItem('foodPreference') || 'Both');
   const [logoClicks, setLogoClicks] = useState(0);
 
@@ -55,6 +58,9 @@ const CustomerMenu = () => {
     setFoodPreference(pref);
 
     fetchMenu();
+    if (customer.phoneNumber) {
+      fetchRecommendations(customer.phoneNumber);
+    }
     
     const savedCart = JSON.parse(localStorage.getItem('cafe_cart')) || [];
     setCart(savedCart);
@@ -63,7 +69,7 @@ const CustomerMenu = () => {
   const fetchMenu = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get('http://192.168.0.167:5000/api/menu');
+      const res = await axios.get(`${API_BASE_URL}/api/menu`);
       setMenuItems(res.data);
     } catch (error) {
       console.error('Error fetching menu', error);
@@ -73,19 +79,31 @@ const CustomerMenu = () => {
     }
   };
 
+  const fetchRecommendations = async (phone) => {
+    try {
+      setIsFetchingRecs(true);
+      const res = await axios.get(`${API_BASE_URL}/api/orders/recommendations/${phone}`);
+      setRecommendations(res.data || []);
+    } catch (error) {
+      console.error('Error fetching recommendations', error);
+    } finally {
+      setIsFetchingRecs(false);
+    }
+  };
+
   const getCartQuantity = (itemId) => {
-    const item = cart.find(c => c._id === itemId);
+    const item = cart.find(c => c.id === itemId);
     return item ? item.quantity : 0;
   };
 
   const updateCart = (item, delta) => {
     let newCart = [...cart];
-    const existing = newCart.find(c => c._id === item._id);
+    const existing = newCart.find(c => c.id === item.id);
 
     if (existing) {
       existing.quantity += delta;
       if (existing.quantity <= 0) {
-        newCart = newCart.filter(c => c._id !== item._id);
+        newCart = newCart.filter(c => c.id !== item.id);
       }
     } else if (delta > 0) {
       newCart.push({ ...item, quantity: 1 });
@@ -216,6 +234,78 @@ const CustomerMenu = () => {
           </div>
         </div>
 
+        {/* Recommendations Section */}
+        {!isLoading && recommendations.length > 0 && (
+          <div className="animate-fade-in" style={{ padding: '0 1.5rem 1rem' }}>
+            <h2 style={{ fontSize: '1.2rem', color: 'var(--primary-color)', marginBottom: '4px' }}>Welcome back!</h2>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: '500' }}>You preferred these dishes in your last visit:</p>
+            
+            <style dangerouslySetInnerHTML={{__html: `.hide-scroll::-webkit-scrollbar { display: none; }`}} />
+            <div className="hide-scroll" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {recommendations.map((item, idx) => (
+                <div key={`rec-${item.id}`} className="cafe-card" style={{ minWidth: '220px', padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ position: 'relative' }}>
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '120px', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '120px', background: 'var(--bg-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ShoppingBag color="var(--primary-color)" size={24} />
+                      </div>
+                    )}
+                    <div style={{ 
+                      position: 'absolute', top: '8px', right: '8px',
+                      width: '20px', height: '20px', background: 'white', borderRadius: '4px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}>
+                      <div style={{ 
+                        width: '6px', height: '6px', borderRadius: '50%', 
+                        background: item.type?.toLowerCase() === 'veg' ? '#1dd1a1' : '#ff4757', 
+                        border: `1px solid ${item.type?.toLowerCase() === 'veg' ? '#1dd1a1' : '#ff4757'}` 
+                      }}></div>
+                    </div>
+                    {/* Star badge for recommendation */}
+                    <div style={{ position: 'absolute', top: '8px', left: '8px', background: '#FFD700', color: '#6F4E37', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: '800', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                      ★ Recommended
+                    </div>
+                  </div>
+                  
+                  <div style={{ padding: '0.8rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ margin: '0 0 4px', fontSize: '0.95rem', fontWeight: '700', color: 'var(--primary-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                      <span style={{ fontWeight: '800', color: 'var(--primary-color)', fontSize: '0.9rem' }}>₹{item.price.toFixed(0)}</span>
+                    </div>
+                    
+                    <div style={{ marginTop: '10px' }}>
+                      {item.isAvailable ? (
+                        getCartQuantity(item.id) > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-cream)', borderRadius: '10px', padding: '4px' }}>
+                            <button onClick={() => updateCart(item, -1)} style={{ background: 'transparent', color: 'var(--primary-color)', border: 'none', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                              <Minus size={14} />
+                            </button>
+                            <span style={{ fontWeight: '800', color: 'var(--primary-color)', fontSize: '0.9rem' }}>{getCartQuantity(item.id)}</span>
+                            <button onClick={() => updateCart(item, 1)} style={{ background: 'transparent', color: 'var(--primary-color)', border: 'none', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => updateCart(item, 1)} className="btn-primary" style={{ padding: '6px 0', fontSize: '0.8rem', borderRadius: '8px', width: '100%' }}>
+                            Add
+                          </button>
+                        )
+                      ) : (
+                        <span style={{ color: 'var(--danger-color)', fontSize: '0.75rem', fontWeight: '700', textAlign: 'center', display: 'block' }}>
+                          Out of Stock
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ padding: '1.5rem', flex: 1, paddingBottom: '120px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem' }}>
             {isLoading ? (
@@ -225,7 +315,7 @@ const CustomerMenu = () => {
                 <p style={{ fontWeight: '500' }}>Loading our delicious menu...</p>
               </div>
             ) : filteredItems.map((item, idx) => (
-              <div key={item._id} className="cafe-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden', animationDelay: `${idx * 0.05}s` }}>
+              <div key={item.id} className="cafe-card animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden', animationDelay: `${idx * 0.05}s` }}>
                 <div style={{ position: 'relative' }}>
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
@@ -256,12 +346,12 @@ const CustomerMenu = () => {
                   
                   <div style={{ marginTop: '12px' }}>
                     {item.isAvailable ? (
-                      getCartQuantity(item._id) > 0 ? (
+                      getCartQuantity(item.id) > 0 ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-cream)', borderRadius: '12px', padding: '4px' }}>
                           <button onClick={() => updateCart(item, -1)} style={{ background: 'transparent', color: 'var(--primary-color)', border: 'none', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                             <Minus size={14} />
                           </button>
-                          <span style={{ fontWeight: '800', color: 'var(--primary-color)' }}>{getCartQuantity(item._id)}</span>
+                          <span style={{ fontWeight: '800', color: 'var(--primary-color)' }}>{getCartQuantity(item.id)}</span>
                           <button onClick={() => updateCart(item, 1)} style={{ background: 'transparent', color: 'var(--primary-color)', border: 'none', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                             <Plus size={14} />
                           </button>

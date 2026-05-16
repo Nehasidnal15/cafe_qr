@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Lock } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
+import API_BASE_URL from '../../config';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://192.168.0.167:5000/api/admin/login', { username, password });
+       const res = await axios.post(`${API_BASE_URL}/api/admin/login`, { username, password });
       localStorage.setItem('adminToken', res.data.token);
       localStorage.setItem('cafe_admin_token', res.data.token); 
       navigate('/admin/dashboard', { replace: true });
@@ -39,19 +41,42 @@ const AdminLogin = () => {
           <input 
             type="text" 
             className="input-field" 
-            placeholder="Username" 
+            placeholder="Username or Email" 
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-          <input 
-            type="password" 
-            className="input-field" 
-            placeholder="Password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div style={{ position: 'relative' }}>
+            <input 
+              type={showPassword ? 'text' : 'password'} 
+              className="input-field" 
+              placeholder="Password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              style={{ paddingRight: '40px' }}
+            />
+            <button 
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-dim)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0
+              }}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
           <div style={{ textAlign: 'right', marginTop: '-0.5rem' }}>
             <Link to="/admin/forgot-password" style={{ color: 'var(--primary-color)', fontSize: '0.85rem', fontWeight: '600', textDecoration: 'none' }}>
               Forgot Password?

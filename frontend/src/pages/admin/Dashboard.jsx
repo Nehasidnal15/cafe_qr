@@ -5,6 +5,8 @@ import { io } from 'socket.io-client';
 import { LogOut, ListOrdered, Utensils, Plus, Edit, Trash2, Check, X, TrendingUp, Trophy, Loader, Clock, QrCode, Download, Printer } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import toast from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
+import API_BASE_URL from '../../config';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -51,7 +53,7 @@ const AdminDashboard = () => {
     fetchAnalytics();
     fetchTables();
 
-    const newSocket = io('http://192.168.0.167:5000');
+    const newSocket = io(API_BASE_URL);
     setSocket(newSocket);
 
     newSocket.on('newOrder', (order) => {
@@ -63,7 +65,7 @@ const AdminDashboard = () => {
     });
 
     newSocket.on('orderStatusUpdated', (updatedOrder) => {
-      setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
+      setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
     });
 
     return () => newSocket.disconnect();
@@ -76,7 +78,7 @@ const AdminDashboard = () => {
   const fetchOrders = async () => {
     try {
       setIsLoadingOrders(true);
-      const res = await axios.get(`http://192.168.0.167:5000/api/orders?date=${selectedDate}`);
+      const res = await axios.get(`${API_BASE_URL}/api/orders?date=${selectedDate}`);
       setOrders(res.data);
     } catch {
       toast.error('Failed to load orders');
@@ -87,7 +89,7 @@ const AdminDashboard = () => {
 
   const fetchMenu = async () => {
     try {
-      const res = await axios.get('http://192.168.0.167:5000/api/menu');
+      const res = await axios.get(`${API_BASE_URL}/api/menu`);
       setMenuItems(res.data);
     } catch {
       console.error('Failed to load menu');
@@ -96,7 +98,7 @@ const AdminDashboard = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await axios.get(`http://192.168.0.167:5000/api/analytics/top-dishes?range=${analyticsRange}`);
+      const res = await axios.get(`${API_BASE_URL}/api/analytics/top-dishes?range=${analyticsRange}`);
       setAnalyticsData(res.data);
     } catch {
       console.error('Failed to load analytics');
@@ -105,7 +107,7 @@ const AdminDashboard = () => {
 
   const fetchTables = async () => {
     try {
-      const res = await axios.get('http://192.168.0.167:5000/api/tables');
+      const res = await axios.get(`${API_BASE_URL}/api/tables`);
       setTables(res.data);
     } catch {
       console.error('Failed to load tables');
@@ -119,10 +121,11 @@ const AdminDashboard = () => {
     setIsAddingTable(true);
     try {
       // Hardcode local IP to ensure QR works on mobile even if admin is on localhost
-      const localIP = '192.168.0.167'; 
+      // Extract hostname from API_BASE_URL
+      const localIP = new URL(API_BASE_URL).hostname;
       const qrUrl = `http://${localIP}:5173/login?table=${newTableNumber}`;
       
-      await axios.post('http://192.168.0.167:5000/api/tables', {
+      await axios.post(`${API_BASE_URL}/api/tables`, {
         tableNumber: parseInt(newTableNumber),
         qrUrl
       });
@@ -139,7 +142,7 @@ const AdminDashboard = () => {
   const handleDeleteTable = async (id) => {
     if (!window.confirm('Delete this table QR?')) return;
     try {
-      await axios.delete(`http://192.168.0.167:5000/api/tables/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/tables/${id}`);
       toast.success('Table deleted');
       fetchTables();
     } catch {
@@ -183,6 +186,68 @@ const AdminDashboard = () => {
     printWindow.document.close();
   };
 
+  const printAllQRs = () => {
+    if (tables.length === 0) return toast.error('No QR codes to print');
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    const margin = 15;
+    const cols = 3;
+    const rows = 4;
+    const cellWidth = (pageWidth - margin * 2) / cols;
+    const cellHeight = (pageHeight - margin * 2) / rows;
+    const qrSize = 45;
+    
+    let count = 0;
+    
+    doc.setFont("helvetica", "bold");
+    
+    tables.forEach((table) => {
+      const canvas = document.getElementById(`qr-table-${table.tableNumber}`);
+      if (canvas) {
+        if (count > 0 && count % (cols * rows) === 0) {
+          doc.addPage();
+        }
+        
+        const col = count % cols;
+        const row = Math.floor((count % (cols * rows)) / cols);
+        
+        const cellX = margin + col * cellWidth;
+        const cellY = margin + row * cellHeight;
+        
+        // Calculate centered X position for the QR code
+        const qrX = cellX + (cellWidth - qrSize) / 2;
+        const qrY = cellY + 5;
+        
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Add QR Image
+        doc.addImage(dataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+        
+        // Draw Border around QR
+        doc.setDrawColor(111, 78, 55); // #6F4E37 (Cafe Brown)
+        doc.setLineWidth(0.8);
+        doc.roundedRect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4, 2, 2);
+        
+        // Add Table text
+        doc.setTextColor(111, 78, 55);
+        doc.setFontSize(16);
+        doc.text(`Table ${table.tableNumber}`, cellX + cellWidth / 2, qrY + qrSize + 8, { align: 'center' });
+        
+        doc.setTextColor(100, 100, 100);
+        doc.setFontSize(10);
+        doc.text(`Scan to order`, cellX + cellWidth / 2, qrY + qrSize + 13, { align: 'center' });
+        
+        count++;
+      }
+    });
+    
+    doc.save('Cafe_Table_QRs.pdf');
+    toast.success('PDF downloaded successfully!');
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('cafe_admin_token');
@@ -191,7 +256,7 @@ const AdminDashboard = () => {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
-      await axios.patch(`http://192.168.0.167:5000/api/orders/${orderId}/status`, { status });
+      await axios.patch(`${API_BASE_URL}/api/orders/${orderId}/status`, { status });
       toast.success(`Order marked as ${status}`);
       fetchOrders();
     } catch {
@@ -214,10 +279,10 @@ const AdminDashboard = () => {
 
     try {
       if (editingItem) {
-        await axios.put(`http://192.168.0.167:5000/api/menu/${editingItem._id}`, data);
+        await axios.put(`${API_BASE_URL}/api/menu/${editingItem.id}`, data);
         toast.success('Dish updated!');
       } else {
-        await axios.post('http://192.168.0.167:5000/api/menu', data);
+        await axios.post(`${API_BASE_URL}/api/menu`, data);
         toast.success('Dish added!');
       }
     } catch {
@@ -231,7 +296,7 @@ const AdminDashboard = () => {
   const handleDeleteMenu = async (id) => {
     if (confirm('Are you sure you want to delete this item?')) {
       try {
-        await axios.delete(`http://192.168.0.167:5000/api/menu/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/menu/${id}`);
         toast.success('Dish deleted');
         fetchMenu();
       } catch {
@@ -242,7 +307,7 @@ const AdminDashboard = () => {
 
   const toggleAvailability = async (id, currentStatus) => {
     try {
-      await axios.patch(`http://192.168.0.167:5000/api/menu/${id}/availability`, { isAvailable: !currentStatus });
+      await axios.patch(`${API_BASE_URL}/api/menu/${id}/availability`, { isAvailable: !currentStatus });
       toast.success('Availability updated');
       fetchMenu();
     } catch {
@@ -375,7 +440,7 @@ const AdminDashboard = () => {
             })
             .map(order => (
             <div 
-              key={order._id} 
+              key={order.id} 
               className="cafe-card animate-fade-in"
               style={{ 
                 padding: '1.5rem',
@@ -483,7 +548,7 @@ const AdminDashboard = () => {
                 {['Placed', 'Preparing', 'Delivered', 'Paid'].map(status => (
                   <button 
                     key={status}
-                    onClick={() => updateOrderStatus(order._id, status)}
+                    onClick={() => updateOrderStatus(order.id, status)}
                     disabled={order.status === 'Cancelled'}
                     style={{ 
                       padding: '8px 4px', fontSize: '0.75rem', borderRadius: '10px', cursor: 'pointer', border: '1px solid var(--bg-cream)',
@@ -534,7 +599,7 @@ const AdminDashboard = () => {
               </thead>
               <tbody>
                 {menuItems.map(item => (
-                  <tr key={item._id} style={{ borderBottom: '1px solid var(--bg-cream)' }}>
+                  <tr key={item.id} style={{ borderBottom: '1px solid var(--bg-cream)' }}>
                     <td style={{ padding: '1rem 1.2rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {item.imageUrl ? <img src={item.imageUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '10px' }} /> : <div style={{ width: 44, height: 44, background: 'var(--bg-cream)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Utensils size={20} color="var(--primary-color)" /></div>}
@@ -554,16 +619,16 @@ const AdminDashboard = () => {
                     </td>
                     <td style={{ padding: '1rem 1.2rem' }}>
                       <button 
-                        onClick={() => toggleAvailability(item._id, item.isAvailable)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', background: item.isAvailable ? '#E8F5E9' : '#F5F5F5', color: item.isAvailable ? '#2E7D32' : '#757575', padding: '6px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}
+                        onClick={() => toggleAvailability(item.id, item.isAvailable)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', background: item.isAvailable ? '#E8F5E9' : '#FFEBEE', color: item.isAvailable ? '#2E7D32' : '#C62828', padding: '6px 14px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem' }}
                       >
-                        {item.isAvailable ? <Check size={14} /> : <X size={14} />} {item.isAvailable ? 'Live' : 'Hidden'}
+                        {item.isAvailable ? <Check size={14} /> : <X size={14} />} {item.isAvailable ? 'Available' : 'Out of Stock'}
                       </button>
                     </td>
                     <td style={{ padding: '1rem 1.2rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                         <button onClick={() => { setEditingItem(item); setIsModalOpen(true); }} style={{ background: 'var(--bg-cream)', color: 'var(--primary-color)', padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}><Edit size={18} /></button>
-                        <button onClick={() => handleDeleteMenu(item._id)} style={{ background: '#FFEBEE', color: '#C62828', padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                        <button onClick={() => handleDeleteMenu(item.id)} style={{ background: '#FFEBEE', color: '#C62828', padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}><Trash2 size={18} /></button>
                       </div>
                     </td>
                   </tr>
@@ -599,7 +664,7 @@ const AdminDashboard = () => {
             {analyticsData.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {analyticsData.map((item, index) => (
-                  <div key={item._id}>
+                  <div key={item.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{ 
@@ -653,28 +718,34 @@ const AdminDashboard = () => {
               </div>
             </div>
             
-            <form onSubmit={handleAddTable} style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-              <input 
-                type="number" 
-                placeholder="Table No." 
-                className="input-field"
-                style={{ width: '120px', margin: 0, background: 'var(--bg-white)' }}
-                value={newTableNumber}
-                onChange={(e) => setNewTableNumber(e.target.value)}
-                min="1"
-                required
-              />
-              <button type="submit" disabled={isAddingTable} className="btn-primary" style={{ width: 'auto', padding: '10px 20px' }}>
-                <Plus size={18} /> {isAddingTable ? 'Adding...' : 'Add Table'}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <button onClick={printAllQRs} className="btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Printer size={18} /> Print All
               </button>
-            </form>
+              <form onSubmit={handleAddTable} style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Table No." 
+                  className="input-field"
+                  style={{ width: '120px', margin: 0, background: 'var(--bg-white)' }}
+                  value={newTableNumber}
+                  onChange={(e) => setNewTableNumber(e.target.value.replace(/\D/g, ''))}
+                  required
+                />
+                <button type="submit" disabled={isAddingTable} className="btn-primary" style={{ width: 'auto', padding: '10px 20px' }}>
+                  <Plus size={18} /> {isAddingTable ? 'Adding...' : 'Add Table'}
+                </button>
+              </form>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
             {tables.map(table => (
-              <div key={table._id} className="cafe-card animate-fade-in" style={{ padding: '1.5rem', textAlign: 'center', position: 'relative' }}>
+              <div key={table.id} className="cafe-card animate-fade-in" style={{ padding: '1.5rem', textAlign: 'center', position: 'relative' }}>
                 <button 
-                  onClick={() => handleDeleteTable(table._id)}
+                  onClick={() => handleDeleteTable(table.id)}
                   style={{ position: 'absolute', top: '15px', right: '15px', background: '#FFEBEE', color: '#C62828', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer' }}
                 >
                   <Trash2 size={16} />
@@ -689,14 +760,6 @@ const AdminDashboard = () => {
                     size={160}
                     level={"H"}
                     includeMargin={true}
-                    imageSettings={{
-                      src: "https://cdn-icons-png.flaticon.com/512/2734/2734039.png", // Small cafe icon in middle
-                      x: undefined,
-                      y: undefined,
-                      height: 30,
-                      width: 30,
-                      excavate: true,
-                    }}
                   />
                 </div>
 
@@ -740,7 +803,7 @@ const AdminDashboard = () => {
                 <input name="price" defaultValue={editingItem?.price} type="number" className="input-field" placeholder="Price (₹)" required style={{ flex: 1 }} />
                 <select name="isAvailable" defaultValue={editingItem ? editingItem.isAvailable : true} className="input-field" style={{ flex: 1, cursor: 'pointer' }}>
                   <option value={true}>Available</option>
-                  <option value={false}>Hidden</option>
+                  <option value={false}>Out of Stock</option>
                 </select>
               </div>
               <div style={{ display: 'flex', gap: '1rem' }}>

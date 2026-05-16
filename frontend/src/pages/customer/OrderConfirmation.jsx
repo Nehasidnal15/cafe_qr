@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircle2, ChevronRight, MessageCircle, LogOut, XCircle, Clock, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import API_BASE_URL from '../../config';
 
 const CustomerOrderConfirmation = () => {
   const location = useLocation();
@@ -56,12 +57,12 @@ const CustomerOrderConfirmation = () => {
     }
     
     setIsCancelling(true);
-    console.log(`[FRONTEND] Cancelling ${selectedItemId ? 'item: ' + selectedItemId : 'full order: ' + currentOrder._id}`);
+    console.log(`[FRONTEND] Cancelling ${selectedItemId ? 'item: ' + selectedItemId : 'full order: ' + currentOrder.id}`);
 
     try {
       const url = selectedItemId 
-        ? `http://192.168.0.167:5000/api/orders/${currentOrder._id}/items/${selectedItemId}/cancel`
-        : `http://192.168.0.167:5000/api/orders/${currentOrder._id}/cancel`;
+        ? `${API_BASE_URL}/api/orders/${currentOrder.id}/items/${selectedItemId}/cancel`
+        : `${API_BASE_URL}/api/orders/${currentOrder.id}/cancel`;
         
       const res = await axios.put(url, { reason });
       
@@ -139,7 +140,7 @@ const CustomerOrderConfirmation = () => {
           <div style={{ margin: '1.2rem 0', padding: '1rem 0', borderTop: '1px solid var(--bg-cream)', borderBottom: '1px solid var(--bg-cream)' }}>
             <p style={{ fontWeight: '800', marginBottom: '1rem', fontSize: '0.95rem', color: 'var(--primary-color)' }}>Items Ordered:</p>
             {currentOrder.items.map((item) => (
-              <div key={item._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', gap: '10px' }}>
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                      <span style={{ fontSize: '0.9rem', color: item.status === 'Cancelled' ? 'var(--text-dim)' : 'var(--text-main)', textDecoration: item.status === 'Cancelled' ? 'line-through' : 'none', fontWeight: '500' }}>
@@ -153,7 +154,7 @@ const CustomerOrderConfirmation = () => {
 
                 {item.status === 'Placed' && currentOrder.status !== 'Cancelled' && canCancel && (
                   <button 
-                    onClick={() => { setSelectedItemId(item._id); setShowReasonModal(true); }}
+                    onClick={() => { setSelectedItemId(item.id); setShowReasonModal(true); }}
                     style={{ background: 'var(--bg-cream)', border: 'none', color: '#C62828', padding: '4px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
                     <Trash2 size={12} /> Cancel

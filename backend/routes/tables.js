@@ -12,15 +12,35 @@ router.get('/', async (req, res) => {
   }
 });
 
+const os = require('os');
+
+// Helper to get local IP
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
 // Add a new table
 router.post('/', async (req, res) => {
-  const { tableNumber, qrUrl } = req.body;
+  const { tableNumber } = req.body;
   try {
     const existing = await Table.findByTableNumber(tableNumber);
     if (existing) {
       return res.status(400).json({ message: 'Table already exists' });
     }
-    const table = await Table.create(tableNumber, qrUrl);
+    
+    // Generate QR URL automatically using the server's local IP
+    const localIP = getLocalIP();
+    const generatedQrUrl = `http://${localIP}:5173/login?table=${tableNumber}`;
+    
+    const table = await Table.create(tableNumber, generatedQrUrl);
     res.status(201).json(table);
   } catch (error) {
     res.status(400).json({ message: error.message });

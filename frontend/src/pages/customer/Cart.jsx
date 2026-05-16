@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ChevronLeft, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import toast from 'react-hot-toast';
+import API_BASE_URL from '../../config';
 
 const CustomerCart = () => {
   const navigate = useNavigate();
@@ -25,12 +26,12 @@ const CustomerCart = () => {
 
   const updateCart = (itemId, delta) => {
     let newCart = [...cart];
-    const existing = newCart.find(c => c._id === itemId);
+    const existing = newCart.find(c => c.id === itemId);
 
     if (existing) {
       existing.quantity += delta;
       if (existing.quantity <= 0) {
-        newCart = newCart.filter(c => c._id !== itemId);
+        newCart = newCart.filter(c => c.id !== itemId);
       }
     }
     setCart(newCart);
@@ -38,7 +39,7 @@ const CustomerCart = () => {
   };
 
   const removeItem = (itemId) => {
-    const newCart = cart.filter(c => c._id !== itemId);
+    const newCart = cart.filter(c => c.id !== itemId);
     setCart(newCart);
     localStorage.setItem('cafe_cart', JSON.stringify(newCart));
   };
@@ -56,17 +57,19 @@ const CustomerCart = () => {
       customerPhone: customer.phoneNumber,
       tableNumber: customer.tableNumber,
       items: cart.map(item => ({
-        menuItemId: item._id,
+        id: item.id,
+        menuItemId: item.id,
         name: item.name,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        status: 'Placed'
       })),
       totalAmount: calculateTotal(),
       paymentMode
     };
 
     try {
-      const res = await axios.post('http://192.168.0.167:5000/api/orders', orderData);
+      const res = await axios.post(`${API_BASE_URL}/api/orders`, orderData);
       
       const newHistory = [...orderedHistory, ...cart];
       localStorage.setItem('cafe_ordered_history', JSON.stringify(newHistory));
@@ -144,7 +147,7 @@ const CustomerCart = () => {
                   <h3 style={{ marginBottom: '1.2rem', fontSize: '1.1rem', color: 'var(--primary-color)' }}>New Order</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                     {cart.map(item => (
-                      <div key={item._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--bg-cream)' }}>
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--bg-cream)' }}>
                         <div style={{ flex: 1 }}>
                           <h4 style={{ margin: '0 0 4px', fontSize: '1rem', color: 'var(--primary-color)' }}>{item.name}</h4>
                           <span style={{ color: 'var(--accent-color)', fontWeight: '800', fontSize: '0.9rem' }}>₹{item.price.toFixed(0)}</span>
@@ -152,15 +155,15 @@ const CustomerCart = () => {
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-cream)', borderRadius: '12px', padding: '4px' }}>
-                            <button onClick={() => updateCart(item._id, -1)} style={{ background: 'transparent', color: 'var(--primary-color)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                            <button onClick={() => updateCart(item.id, -1)} style={{ background: 'transparent', color: 'var(--primary-color)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
                               <Minus size={14} />
                             </button>
                             <span style={{ width: '20px', textAlign: 'center', fontWeight: '800', color: 'var(--primary-color)' }}>{item.quantity}</span>
-                            <button onClick={() => updateCart(item._id, 1)} style={{ background: 'transparent', color: 'var(--primary-color)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                             <button onClick={() => updateCart(item.id, 1)} style={{ background: 'transparent', color: 'var(--primary-color)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
                               <Plus size={14} />
                             </button>
                           </div>
-                          <button onClick={() => removeItem(item._id)} style={{ background: 'var(--bg-cream)', color: 'var(--danger-color)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                          <button onClick={() => removeItem(item.id)} style={{ background: 'var(--bg-cream)', color: 'var(--danger-color)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
                             <Trash2 size={16} />
                           </button>
                         </div>

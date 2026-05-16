@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
+const MenuItem = require('../models/MenuItem');
 
 const generateOrderId = () => {
   return Math.floor(10000000 + Math.random() * 90000000).toString();
@@ -23,6 +24,59 @@ router.get('/', async (req, res) => {
 
     const orders = await Order.findAll(query);
     res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/recommendations/:phone', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      return res.status(400).json({ message: 'Invalid phone number.' });
+    }
+
+    const pastOrders = await Order.findByPhone(phone);
+    if (!pastOrders || pastOrders.length === 0) {
+      return res.json([]);
+    }
+
+    const itemStats = {};
+    
+    pastOrders.forEach((order, index) => {
+      if (order.status === 'Cancelled') return;
+      
+      order.items.forEach(item => {
+        if (item.status === 'Cancelled') return;
+        
+        if (!itemStats[item.id]) {
+          itemStats[item.id] = {
+            id: item.id,
+            count: 0,
+            lastOrderedIndex: index
+          };
+        }
+        itemStats[item.id].count += item.quantity;
+      });
+    });
+
+    const candidateIds = Object.values(itemStats)
+      .sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.lastOrderedIndex - b.lastOrderedIndex;
+      })
+      .slice(0, 5)
+      .map(stat => stat.id);
+
+    if (candidateIds.length === 0) return res.json([]);
+
+    const menuItems = await MenuItem.findAll(); 
+    
+    const recommendations = candidateIds.map(id => {
+      return menuItems.find(m => m.id === id);
+    }).filter(item => item && item.isAvailable);
+
+    res.json(recommendations.slice(0, 4));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -141,7 +195,7 @@ router.put('/:orderId/items/:itemId/cancel', async (req, res) => {
     // In JSONB items, we don't have _id unless we added it manually. 
     // Usually frontend sends a unique ID for items. 
     // Let's assume items have a unique ID or use index.
-    const itemIndex = order.items.findIndex(item => (item.id === itemId || item._id === itemId));
+    const itemIndex = order.items.findIndex(item => (item.id == itemId || item._id == itemId));
     if (itemIndex === -1) return res.status(404).json({ success: false, message: 'Item not found in order.' });
 
     const item = order.items[itemIndex];
