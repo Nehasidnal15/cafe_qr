@@ -19,13 +19,37 @@ const AdminDashboard = () => {
     if (path.includes('menu')) setActiveTab('menu');
     else if (path.includes('analytics')) setActiveTab('analytics');
     else if (path.includes('qrcodes')) setActiveTab('qrcodes');
+    else if (path.includes('delivered')) setActiveTab('delivered');
     else setActiveTab('orders');
   }, [location]);
   const [orders, setOrders] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+
+  const getOneMonthAgoStr = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  useEffect(() => {
+    if (activeTab === 'delivered') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const oneMonthAgoStr = getOneMonthAgoStr();
+      if (selectedDate < oneMonthAgoStr || selectedDate > todayStr) {
+        setSelectedDate(todayStr);
+      }
+    }
+  }, [activeTab]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [selectedImage, setSelectedImage] = useState('');
+
+  useEffect(() => {
+    if (isModalOpen) {
+      setSelectedImage(editingItem ? editingItem.imageUrl || '' : '');
+    }
+  }, [isModalOpen, editingItem]);
   
   // QR Code State
   const [tables, setTables] = useState([]);
@@ -274,7 +298,7 @@ const AdminDashboard = () => {
       category: formData.get('category'),
       type: formData.get('type'),
       isAvailable: formData.get('isAvailable') === 'true',
-      imageUrl: formData.get('imageUrl')
+      imageUrl: selectedImage
     };
 
     try {
@@ -291,6 +315,25 @@ const AdminDashboard = () => {
 
     setIsModalOpen(false);
     fetchMenu();
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImage(reader.result);
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDeleteMenu = async (id) => {
@@ -339,6 +382,18 @@ const AdminDashboard = () => {
           }}
         >
           <ListOrdered size={18} /> Live Orders
+        </button>
+        <button 
+          onClick={() => navigate('/admin/delivered')}
+          className="btn-secondary" 
+          style={{ 
+            background: activeTab === 'delivered' ? 'var(--primary-color)' : 'var(--bg-white)', 
+            color: activeTab === 'delivered' ? 'white' : 'var(--primary-color)', 
+            display: 'flex', alignItems: 'center', gap: '8px', border: activeTab === 'delivered' ? 'none' : '1px solid var(--glass-border)',
+            fontWeight: '700', padding: '12px 24px'
+          }}
+        >
+          <Check size={18} /> Delivered Orders
         </button>
         <button 
           onClick={() => navigate('/admin/menu')}
@@ -415,8 +470,17 @@ const AdminDashboard = () => {
                   type="date" 
                   className="input-field" 
                   style={{ width: 'auto', padding: '6px 12px', height: '38px', margin: 0, background: 'var(--bg-cream)', borderRadius: '10px' }}
+                  max={new Date().toISOString().split('T')[0]}
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  onChange={(e) => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    if (e.target.value > todayStr) {
+                      toast.error("Cannot select a future date");
+                      setSelectedDate(todayStr);
+                    } else {
+                      setSelectedDate(e.target.value);
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -436,7 +500,7 @@ const AdminDashboard = () => {
             .filter(order => {
               if (orderTypeFilter === 'all') return true;
               if (orderTypeFilter === 'cancelled') return order.status === 'Cancelled';
-              return order.status !== 'Cancelled';
+              return order.status !== 'Cancelled' && order.status !== 'Delivered' && order.status !== 'Paid';
             })
             .map(order => (
             <div 
@@ -545,7 +609,7 @@ const AdminDashboard = () => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '6px', marginTop: '4px' }}>
-                {['Placed', 'Preparing', 'Delivered', 'Paid'].map(status => (
+                {['Placed', 'Delivered', 'Paid'].map(status => (
                   <button 
                     key={status}
                     onClick={() => updateOrderStatus(order.id, status)}
@@ -573,6 +637,154 @@ const AdminDashboard = () => {
               <p style={{ color: 'var(--text-dim)', margin: 0, fontWeight: '600' }}>No orders found for this date.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'delivered' && (
+        <div className="animate-fade-in">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-color)', margin: 0 }}>Delivered Orders</h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontWeight: '500', margin: '4px 0 0' }}>Displaying completed and served orders (last 1 month only)</p>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'var(--bg-white)', padding: '10px 20px', borderRadius: '16px', border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)' }}>
+              <button 
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                style={{ background: 'var(--bg-cream)', color: 'var(--primary-color)', border: 'none', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '800' }}
+              >
+                Today
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <span style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--primary-color)' }}>Date:</span>
+                <input 
+                  type="date" 
+                  className="input-field" 
+                  style={{ width: 'auto', padding: '6px 12px', height: '38px', margin: 0, background: 'var(--bg-cream)', borderRadius: '10px' }}
+                  min={getOneMonthAgoStr()}
+                  max={new Date().toISOString().split('T')[0]}
+                  value={selectedDate}
+                  onChange={(e) => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const oneMonthAgoStr = getOneMonthAgoStr();
+                    if (e.target.value < oneMonthAgoStr) {
+                      toast.error("Delivered orders are restricted to the last 1 month");
+                      setSelectedDate(todayStr);
+                    } else if (e.target.value > todayStr) {
+                      toast.error("Cannot select a future date");
+                      setSelectedDate(todayStr);
+                    } else {
+                      setSelectedDate(e.target.value);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+            {isLoadingOrders ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem 0', color: 'var(--text-dim)' }}>
+                <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 100% { transform: rotate(360deg); } }`}} />
+                <Loader style={{ animation: 'spin 2s linear infinite', marginBottom: '1rem' }} size={48} color="var(--primary-color)" />
+                <p style={{ fontWeight: '600' }}>Loading delivered orders...</p>
+              </div>
+            ) : orders.filter(order => order.status === 'Delivered' || order.status === 'Paid').length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '4rem', background: 'var(--bg-white)', borderRadius: '24px', border: '1px dashed var(--secondary-color)', gridColumn: '1 / -1' }}>
+                <Check size={48} style={{ color: 'var(--secondary-color)', marginBottom: '1rem', opacity: 0.5 }} />
+                <p style={{ color: 'var(--text-dim)', margin: 0, fontWeight: '600' }}>No delivered orders found for this date.</p>
+              </div>
+            ) : orders
+              .filter(order => order.status === 'Delivered' || order.status === 'Paid')
+              .map(order => (
+                <div 
+                  key={order.id} 
+                  className="cafe-card animate-fade-in"
+                  style={{ 
+                    padding: '1.5rem',
+                    borderTop: '6px solid #1976D2',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-color)' }}>Table {order.tableNumber}</h3>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: '700', background: 'var(--bg-cream)', padding: '2px 8px', borderRadius: '4px' }}>
+                          #{order.orderId}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-dim)', fontWeight: '600' }}>
+                        {order.customerName} • {order.customerPhone}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span className="status-badge" style={{ 
+                        background: '#E3F2FD',
+                        color: '#1976D2',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '0.8rem',
+                        fontWeight: '800'
+                      }}>
+                        {order.status}
+                      </span>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: '600' }}>
+                        {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ background: '#FDFCFB', padding: '1rem', borderRadius: '14px', border: '1px solid var(--bg-cream)' }}>
+                    {order.items.map((item, idx) => (
+                      <div key={idx} style={{ marginBottom: idx === order.items.length - 1 ? 0 : '10px', paddingBottom: idx === order.items.length - 1 ? 0 : '10px', borderBottom: idx === order.items.length - 1 ? 'none' : '1px dashed var(--bg-cream)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--primary-color)' }}>
+                              {item.quantity}x {item.name}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary-color)' }}>₹{(item.price * item.quantity).toFixed(0)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: '600' }}>Payment: </span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--primary-color)', fontWeight: '800' }}>{order.paymentMode}</span>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: '600' }}>Total: </span>
+                      <span style={{ fontSize: '1.2rem', color: 'var(--primary-color)', fontWeight: '900' }}>₹{order.totalAmount.toFixed(0)}</span>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '6px', marginTop: '4px' }}>
+                    {['Placed', 'Delivered', 'Paid'].map(status => (
+                      <button 
+                        key={status}
+                        onClick={() => updateOrderStatus(order.id, status)}
+                        style={{ 
+                          padding: '8px 4px', fontSize: '0.75rem', borderRadius: '10px', cursor: 'pointer', border: '1px solid var(--bg-cream)',
+                          background: order.status === status ? 
+                            (status === 'Placed' ? '#2E7D32' : status === 'Delivered' ? '#1976D2' : '#757575') 
+                            : 'var(--bg-white)',
+                          color: order.status === status ? 'white' : 'var(--primary-color)',
+                          fontWeight: '800',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
@@ -760,6 +972,7 @@ const AdminDashboard = () => {
                     size={160}
                     level={"H"}
                     includeMargin={true}
+                    fgColor={"#6F4E37"}
                   />
                 </div>
 
@@ -813,7 +1026,56 @@ const AdminDashboard = () => {
                 </select>
                 <div style={{ flex: 1 }}></div>
               </div>
-              <input name="imageUrl" defaultValue={editingItem?.imageUrl} className="input-field" placeholder="Image URL (e.g. Unsplash link)" />
+              <input 
+                type="file" 
+                id="dish-image-upload"
+                accept="image/*" 
+                style={{ display: 'none' }} 
+                onChange={handleImageChange}
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById('dish-image-upload').click()}
+                className="btn-secondary"
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px', 
+                  padding: '12px',
+                  borderRadius: '12px',
+                  background: 'var(--bg-cream)',
+                  color: 'var(--primary-color)',
+                  border: '1px dashed var(--primary-color)',
+                  fontWeight: '800',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={16} /> Select Dish Image
+              </button>
+
+              {selectedImage && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--bg-cream)', padding: '10px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                  <img 
+                    src={selectedImage} 
+                    alt="Dish Preview" 
+                    style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }}
+                  />
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-color)' }}>Image Selected</p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-dim)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {selectedImage.startsWith('data:') ? 'Local file uploaded' : 'External image url'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImage('')}
+                    style={{ background: '#FFEBEE', color: 'var(--danger-color)', border: 'none', padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
               
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary" style={{ flex: 1, padding: '14px' }}>Cancel</button>

@@ -6,7 +6,12 @@ const Table = require('../models/Table');
 router.get('/', async (req, res) => {
   try {
     const tables = await Table.findAll();
-    res.json(tables);
+    const localIP = getLocalIP();
+    const updatedTables = tables.map(t => ({
+      ...t,
+      qrUrl: `http://${localIP}:5173/login?table=${t.tableNumber}`
+    }));
+    res.json(updatedTables);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

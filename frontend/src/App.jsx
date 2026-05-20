@@ -51,6 +51,7 @@ function App() {
         {/* Protected Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
         <Route path="/admin/orders" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+        <Route path="/admin/delivered" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
         <Route path="/admin/menu" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
         <Route path="/admin/analytics" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
         <Route path="/admin/qrcodes" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />

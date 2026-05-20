@@ -9,7 +9,7 @@ const CustomerCart = () => {
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
   const [orderedHistory, setOrderedHistory] = useState([]);
-  const [paymentMode, setPaymentMode] = useState('Online');
+  const [paymentMode, setPaymentMode] = useState('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const customer = JSON.parse(localStorage.getItem('cafe_customer'));
 
@@ -181,24 +181,13 @@ const CustomerCart = () => {
                   <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', color: 'var(--primary-color)' }}>Payment Method</h3>
                   <div style={{ display: 'flex', gap: '0.8rem' }}>
                     <div 
-                      onClick={() => setPaymentMode('Online')}
                       style={{ 
-                        flex: 1, padding: '1rem', borderRadius: '12px', border: `2px solid ${paymentMode === 'Online' ? 'var(--primary-color)' : 'var(--bg-cream)'}`,
-                        background: paymentMode === 'Online' ? 'var(--secondary-color)' : 'var(--bg-white)',
-                        textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s ease'
+                        flex: 1, padding: '1rem', borderRadius: '12px', border: '2px solid var(--primary-color)',
+                        background: 'var(--secondary-color)',
+                        textAlign: 'center', transition: 'all 0.3s ease'
                       }}
                     >
-                      <p style={{ margin: 0, fontWeight: '700', fontSize: '0.9rem', color: 'var(--primary-color)' }}>Online</p>
-                    </div>
-                    <div 
-                      onClick={() => setPaymentMode('Cash')}
-                      style={{ 
-                        flex: 1, padding: '1rem', borderRadius: '12px', border: `2px solid ${paymentMode === 'Cash' ? 'var(--primary-color)' : 'var(--bg-cream)'}`,
-                        background: paymentMode === 'Cash' ? 'var(--secondary-color)' : 'var(--bg-white)',
-                        textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s ease'
-                      }}
-                    >
-                      <p style={{ margin: 0, fontWeight: '700', fontSize: '0.9rem', color: 'var(--primary-color)' }}>Cash</p>
+                      <p style={{ margin: 0, fontWeight: '700', fontSize: '0.9rem', color: 'var(--primary-color)' }}>Cash on Table</p>
                     </div>
                   </div>
                 </div>
