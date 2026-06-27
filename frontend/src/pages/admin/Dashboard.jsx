@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { LogOut, ListOrdered, Utensils, Plus, Edit, Trash2, Check, X, TrendingUp, Trophy, Loader, Clock, QrCode, Download, Printer } from 'lucide-react';
+import { LogOut, ListOrdered, Utensils, Plus, Edit, Trash2, Check, X, TrendingUp, Trophy, Loader, Clock, QrCode, Download, Printer, UtensilsCrossed } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
@@ -361,9 +361,14 @@ const AdminDashboard = () => {
   return (
     <div className="admin-container animate-fade-in" style={{ background: 'var(--bg-cream)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-        <div>
-          <h1 className="header-title" style={{ fontSize: '2.2rem' }}>Cafe Admin</h1>
-          <p style={{ color: 'var(--text-dim)', fontWeight: '500', marginTop: '4px' }}>Welcome back to your dashboard</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: 'var(--primary-color)', padding: '12px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(111, 78, 55, 0.15)' }}>
+            <UtensilsCrossed color="white" size={28} />
+          </div>
+          <div>
+            <h1 className="header-title" style={{ fontSize: '2rem', margin: 0, lineHeight: 1.1 }}>Admin Portal</h1>
+            <p style={{ color: 'var(--text-dim)', fontWeight: '500', marginTop: '4px', margin: 0 }}>Welcome back to your dashboard</p>
+          </div>
         </div>
         <button onClick={handleLogout} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-white)', color: 'var(--danger-color)', border: '1px solid #FFEBEE' }}>
           <LogOut size={18} /> Logout
@@ -500,7 +505,7 @@ const AdminDashboard = () => {
             .filter(order => {
               if (orderTypeFilter === 'all') return true;
               if (orderTypeFilter === 'cancelled') return order.status === 'Cancelled';
-              return order.status !== 'Cancelled' && order.status !== 'Delivered' && order.status !== 'Paid';
+              return order.status !== 'Cancelled' && order.status !== 'Delivered';
             })
             .map(order => (
             <div 
@@ -512,7 +517,6 @@ const AdminDashboard = () => {
                   order.status === 'Cancelled' ? '#C62828' : 
                   order.status === 'Preparing' ? '#EF6C00' : 
                   order.status === 'Delivered' ? '#1976D2' : 
-                  order.status === 'Paid' ? '#757575' :
                   '#2E7D32'
                 }`,
                 display: 'flex',
@@ -538,13 +542,11 @@ const AdminDashboard = () => {
                       order.status === 'Cancelled' ? '#FFEBEE' : 
                       order.status === 'Preparing' ? '#FFF3E0' : 
                       order.status === 'Delivered' ? '#E3F2FD' : 
-                      order.status === 'Paid' ? '#F5F5F5' :
                       '#E8F5E9',
                     color: 
                       order.status === 'Cancelled' ? '#C62828' : 
                       order.status === 'Preparing' ? '#EF6C00' : 
                       order.status === 'Delivered' ? '#1976D2' : 
-                      order.status === 'Paid' ? '#757575' :
                       '#2E7D32',
                     padding: '4px 12px',
                     borderRadius: '20px',
@@ -609,7 +611,7 @@ const AdminDashboard = () => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '6px', marginTop: '4px' }}>
-                {['Placed', 'Delivered', 'Paid'].map(status => (
+                {['Placed', 'Delivered'].map(status => (
                   <button 
                     key={status}
                     onClick={() => updateOrderStatus(order.id, status)}
@@ -689,13 +691,13 @@ const AdminDashboard = () => {
                 <Loader style={{ animation: 'spin 2s linear infinite', marginBottom: '1rem' }} size={48} color="var(--primary-color)" />
                 <p style={{ fontWeight: '600' }}>Loading delivered orders...</p>
               </div>
-            ) : orders.filter(order => order.status === 'Delivered' || order.status === 'Paid').length === 0 ? (
+            ) : orders.filter(order => order.status === 'Delivered').length === 0 ? (
               <div style={{ textAlign: 'center', padding: '4rem', background: 'var(--bg-white)', borderRadius: '24px', border: '1px dashed var(--secondary-color)', gridColumn: '1 / -1' }}>
                 <Check size={48} style={{ color: 'var(--secondary-color)', marginBottom: '1rem', opacity: 0.5 }} />
                 <p style={{ color: 'var(--text-dim)', margin: 0, fontWeight: '600' }}>No delivered orders found for this date.</p>
               </div>
             ) : orders
-              .filter(order => order.status === 'Delivered' || order.status === 'Paid')
+              .filter(order => order.status === 'Delivered')
               .map(order => (
                 <div 
                   key={order.id} 
@@ -741,13 +743,23 @@ const AdminDashboard = () => {
                     {order.items.map((item, idx) => (
                       <div key={idx} style={{ marginBottom: idx === order.items.length - 1 ? 0 : '10px', paddingBottom: idx === order.items.length - 1 ? 0 : '10px', borderBottom: idx === order.items.length - 1 ? 'none' : '1px dashed var(--bg-cream)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <span style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--primary-color)' }}>
+                          <div style={{ opacity: item.status === 'Cancelled' ? 0.4 : 1 }}>
+                            <span style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--primary-color)', textDecoration: item.status === 'Cancelled' ? 'line-through' : 'none' }}>
                               {item.quantity}x {item.name}
                             </span>
                           </div>
-                          <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary-color)' }}>₹{(item.price * item.quantity).toFixed(0)}</span>
+                          {item.status === 'Cancelled' ? (
+                            <span style={{ fontSize: '0.65rem', background: '#FFEBEE', color: '#C62828', padding: '2px 8px', borderRadius: '4px', fontWeight: '900' }}>CANCELLED</span>
+                          ) : (
+                            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--primary-color)' }}>₹{(item.price * item.quantity).toFixed(0)}</span>
+                          )}
                         </div>
+                        {item.status === 'Cancelled' && (
+                          <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#C62828', fontWeight: '600', paddingLeft: '4px', borderLeft: '2px solid #C62828' }}>
+                            Reason: {item.cancelReason}
+                            {item.cancelledAt && <span style={{ opacity: 0.7, marginLeft: '8px' }}>({new Date(item.cancelledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -764,7 +776,7 @@ const AdminDashboard = () => {
                   </div>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '6px', marginTop: '4px' }}>
-                    {['Placed', 'Delivered', 'Paid'].map(status => (
+                    {['Placed', 'Delivered'].map(status => (
                       <button 
                         key={status}
                         onClick={() => updateOrderStatus(order.id, status)}
