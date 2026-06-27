@@ -1,6 +1,6 @@
 # Cafe QR: QR-Based Cafe Self-Ordering & Management System
 
-A full-stack web application designed for cafe operations and customer self-ordering. Customers scan a table-specific QR code to browse the menu, customize preferences, and place orders. The cafe admin panel receives orders in real-time, manages preparation statuses, and generates PDF invoices.
+A full-stack web application designed for cafe operations and customer self-ordering. Customers scan a table-specific QR code to browse the menu, customize preferences, and place orders. The cafe admin panel receives orders in real-time, manages menu.
 
 ---
 
