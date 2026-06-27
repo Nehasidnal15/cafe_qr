@@ -10,12 +10,12 @@ A full-stack web application designed for cafe operations and customer self-orde
   - Scan table-specific QR codes.
   - Browse menu with category, veg/non-veg, and availability filters.
   - Custom notes/preferences for order items.
-  - Real-time order status tracking.
+  
 
 - **For Admins**:
   - Live order tracking dashboard with real-time updates via WebSockets.
   - Menu item management (Add, edit, delete, toggle availability).
-  - Print/download PDF invoices.
+  - Print/download PDF QRs
   - Secure login and password recovery with token-based email verification.
 
 ---
