@@ -42,6 +42,11 @@ router.post('/forgot-password', async (req, res) => {
     const expiry = new Date(Date.now() + 10 * 60 * 1000); 
 
     await Admin.updateOTP(email, otp, expiry);
+    
+    // --> LOG OTP TO CONSOLE TO UNBLOCK USER <--
+    console.log('\n=============================================');
+    console.log(`🔑 DEV MODE: Your OTP is: ${otp}`);
+    console.log('=============================================\n');
     console.log('[DEBUG] OTP updated in DB. Sending email...');
     
     await sendOTPEmail(email, otp);

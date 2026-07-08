@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Mail, Lock, ShieldCheck, ArrowLeft, Eye, EyeOff } from 'lucide-react';
@@ -15,14 +15,28 @@ const ForgotPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [timer, setTimer] = useState(0);
+
+  useEffect(() => {
+    let interval = null;
+    if (step === 2 && timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (timer === 0) {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [step, timer]);
 
   const handleSendOTP = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setLoading(true);
     try {
       await axios.post(`${API_BASE_URL}/api/admin/forgot-password`, { email });
       toast.success('OTP sent to your email');
       setStep(2);
+      setTimer(180); // 3 minutes timer
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to send OTP');
     } finally {
@@ -81,11 +95,19 @@ const ForgotPassword = () => {
           {step === 2 && 'Verify OTP'}
           {step === 3 && 'New Password'}
         </h1>
-        <p style={{ color: 'var(--text-dim)', marginBottom: '2.5rem', fontWeight: '500' }}>
+        <div style={{ color: 'var(--text-dim)', marginBottom: '2.5rem', fontWeight: '500', lineHeight: '1.5' }}>
           {step === 1 && 'Enter your email to receive a password reset OTP'}
-          {step === 2 && `Enter the 6-digit code sent to ${email}`}
+          {step === 2 && (
+            <>
+              Enter the 6-digit code sent to <strong>{email}</strong>.<br />
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-light)', display: 'block', marginTop: '0.5rem' }}>
+                Please wait 3-4 minutes to receive the email.<br />
+                The OTP is valid for 10 minutes.
+              </span>
+            </>
+          )}
           {step === 3 && 'Set a strong new password for your account'}
-        </p>
+        </div>
 
         {step === 1 && (
           <form onSubmit={handleSendOTP} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
@@ -118,9 +140,19 @@ const ForgotPassword = () => {
             <button type="submit" className="btn-primary" disabled={loading || otp.length !== 6}>
               {loading ? 'Verifying...' : 'Verify OTP'}
             </button>
-            <button type="button" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '0.9rem', cursor: 'pointer' }}>
-              Change Email
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+              <button type="button" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '0.9rem', cursor: 'pointer' }}>
+                Change Email
+              </button>
+              <button 
+                type="button" 
+                onClick={handleSendOTP}
+                disabled={timer > 0 || loading}
+                style={{ background: 'none', border: 'none', color: timer > 0 ? 'var(--text-light)' : 'var(--primary-color)', fontSize: '0.9rem', cursor: timer > 0 ? 'not-allowed' : 'pointer', fontWeight: '600' }}
+              >
+                {timer > 0 ? `Resend OTP in ${Math.floor(timer / 60)}:${('0' + (timer % 60)).slice(-2)}` : 'Resend OTP'}
+              </button>
+            </div>
           </form>
         )}
 
