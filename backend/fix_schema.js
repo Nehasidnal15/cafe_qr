@@ -38,6 +38,13 @@ const fixSchema = async () => {
       )
     `);
 
+    // Fix Menu Table
+    console.log('Fixing menu table schema...');
+    await db.query(`
+      ALTER TABLE menu 
+      ADD COLUMN IF NOT EXISTS food_type VARCHAR(50) DEFAULT 'veg'
+    `);
+
     console.log('Schema fixed successfully!');
     process.exit(0);
   } catch (err) {
