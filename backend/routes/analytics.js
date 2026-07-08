@@ -21,18 +21,18 @@ router.get('/top-dishes', async (req, res) => {
 
     const sql = `
       SELECT 
-          item->>'menuItemId' as id, 
+          COALESCE(item->>'id', item->>'menuItemId') as id, 
           item->>'name' as name, 
           SUM((item->>'quantity')::int) as "totalSold"
       FROM 
           orders, 
-          jsonb_array_elements(items) as item
+          jsonb_array_elements(items::jsonb) as item
       WHERE 
           created_at >= $1 
           AND status != 'Cancelled' 
-          AND item->>'status' != 'Cancelled'
+          AND (item->>'status' IS NULL OR item->>'status' != 'Cancelled')
       GROUP BY 
-          item->>'menuItemId', item->>'name'
+          COALESCE(item->>'id', item->>'menuItemId'), item->>'name'
       ORDER BY 
           "totalSold" DESC
     `;
