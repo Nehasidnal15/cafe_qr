@@ -146,10 +146,8 @@ const AdminDashboard = () => {
     
     setIsAddingTable(true);
     try {
-      // Hardcode local IP to ensure QR works on mobile even if admin is on localhost
-      // Extract hostname from API_BASE_URL
-      const localIP = new URL(API_BASE_URL).hostname;
-      const qrUrl = `http://${localIP}:5173/login?table=${newTableNumber}`;
+      // Use window.location.origin to ensure the QR points to the correct frontend URL (local or production)
+      const qrUrl = `${window.location.origin}/login?table=${newTableNumber}`;
       
       await axios.post(`${API_BASE_URL}/api/tables`, {
         tableNumber: parseInt(newTableNumber),
