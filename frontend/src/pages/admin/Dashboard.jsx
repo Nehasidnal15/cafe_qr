@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -42,6 +42,7 @@ const AdminDashboard = () => {
   }, [activeTab]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const isSavingRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedImage, setSelectedImage] = useState('');
@@ -291,7 +292,8 @@ const AdminDashboard = () => {
 
   const handleSaveMenu = async (e) => {
     e.preventDefault();
-    if (isSaving) return;
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
     const formData = new FormData(e.target);
     const data = {
@@ -317,6 +319,7 @@ const AdminDashboard = () => {
     } catch {
       toast.error('Failed to save dish');
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   };
