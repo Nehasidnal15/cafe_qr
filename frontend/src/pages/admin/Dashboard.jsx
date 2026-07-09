@@ -306,6 +306,23 @@ const AdminDashboard = () => {
       imageUrl: selectedImage
     };
 
+    // Check for exact duplicate
+    const isDuplicate = menuItems.some(item => 
+      item.id !== editingItem?.id &&
+      item.name?.trim().toLowerCase() === data.name?.trim().toLowerCase() &&
+      item.price === data.price &&
+      item.category?.trim().toLowerCase() === data.category?.trim().toLowerCase() &&
+      (item.type?.trim().toLowerCase() || 'veg') === (data.type?.trim().toLowerCase() || 'veg') &&
+      (item.description?.trim().toLowerCase() || '') === (data.description?.trim().toLowerCase() || '')
+    );
+
+    if (isDuplicate) {
+      toast.error('This item already exists in the menu!');
+      isSavingRef.current = false;
+      setIsSaving(false);
+      return;
+    }
+
     try {
       if (editingItem) {
         await axios.put(`${API_BASE_URL}/api/menu/${editingItem.id}`, data);
