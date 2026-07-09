@@ -306,14 +306,11 @@ const AdminDashboard = () => {
       imageUrl: selectedImage
     };
 
-    // Check for exact duplicate
+    // Check for duplicate dish (matching name and category)
     const isDuplicate = menuItems.some(item => 
       item.id !== editingItem?.id &&
       item.name?.trim().toLowerCase() === data.name?.trim().toLowerCase() &&
-      item.price === data.price &&
-      item.category?.trim().toLowerCase() === data.category?.trim().toLowerCase() &&
-      (item.type?.trim().toLowerCase() || 'veg') === (data.type?.trim().toLowerCase() || 'veg') &&
-      (item.description?.trim().toLowerCase() || '') === (data.description?.trim().toLowerCase() || '')
+      item.category?.trim().toLowerCase() === data.category?.trim().toLowerCase()
     );
 
     if (isDuplicate) {
