@@ -42,6 +42,7 @@ const AdminDashboard = () => {
   }, [activeTab]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedImage, setSelectedImage] = useState('');
 
@@ -290,6 +291,8 @@ const AdminDashboard = () => {
 
   const handleSaveMenu = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
     const formData = new FormData(e.target);
     const data = {
       name: formData.get('name'),
@@ -309,12 +312,13 @@ const AdminDashboard = () => {
         await axios.post(`${API_BASE_URL}/api/menu`, data);
         toast.success('Dish added!');
       }
+      setIsModalOpen(false);
+      fetchMenu();
     } catch {
       toast.error('Failed to save dish');
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsModalOpen(false);
-    fetchMenu();
   };
 
   const handleImageChange = (e) => {
@@ -1090,8 +1094,8 @@ const AdminDashboard = () => {
               )}
               
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary" style={{ flex: 1, padding: '14px' }}>Cancel</button>
-                <button type="submit" className="btn-primary" style={{ flex: 1, padding: '14px' }}>Save Changes</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary" style={{ flex: 1, padding: '14px' }} disabled={isSaving}>Cancel</button>
+                <button type="submit" className="btn-primary" style={{ flex: 1, padding: '14px', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Changes'}</button>
               </div>
             </form>
           </div>
